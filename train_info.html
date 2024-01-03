@@ -1,0 +1,145 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Train Station Details</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+
+        h1 {
+            text-align: center;
+            color: #ffa500;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 16px;
+            color: #333;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            font-size: 16px;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: #ffa500;
+            color: #fff;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+        }
+
+        button:hover {
+            color: black;
+        }
+
+        #result {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        p {
+            margin-bottom: 10px;
+            font-size: 16px;
+            color: #333;
+        }
+
+        h2 {
+            font-size: 18px;
+            color: #333;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Train Station Details</h1>
+    <label for="trainNumber">Enter Train Number:</label>
+    <input type="text" id="trainNumber" placeholder="Enter train number">
+    <button onclick="getTrainDetails()">Get Details</button>
+    <div id="result"></div>
+
+    <script>
+        async function getTrainDetails() {
+            const trainNumber = document.getElementById('trainNumber').value;
+
+            // Call the first API to get train ID
+            const idUrl = `https://indian-railway-irctc.p.rapidapi.com/getTrainId?trainno=${trainNumber}`;
+            const idOptions = {
+                method: 'GET',
+                headers: {
+                    'x-rapid-api': 'rapid-api-database',
+                    'X-RapidAPI-Key': 'ca31a3efd2msh9930d40b8cd66bbp1c7e32jsn48a611722bf6',
+                    'X-RapidAPI-Host': 'indian-railway-irctc.p.rapidapi.com'
+                }
+            };
+
+            try {
+                const idResponse = await fetch(idUrl, idOptions);
+                const idResult = await idResponse.json();
+
+                // Check if the response is an array and take the first element
+                const trainDetails = Array.isArray(idResult) && idResult.length > 0 ? idResult[0] : null;
+
+                if (trainDetails) {
+                    // Use the obtained ID to call the second API for live train status
+                    const liveStatusUrl = `https://indian-railway-irctc.p.rapidapi.com/getTrainLiveStatusById?id=${trainDetails.id}&date=${getFormattedDate()}`;
+                    const liveStatusOptions = {
+                        method: 'GET',
+                        headers: {
+                            'x-rapid-api': 'rapid-api-database',
+                            'X-RapidAPI-Key': 'ca31a3efd2msh9930d40b8cd66bbp1c7e32jsn48a611722bf6',
+                            'X-RapidAPI-Host': 'indian-railway-irctc.p.rapidapi.com'
+                        }
+                    };
+
+                    const liveStatusResponse = await fetch(liveStatusUrl, liveStatusOptions);
+                    const liveStatusResult = await liveStatusResponse.json();
+
+                    // Display the result
+                    const resultDiv = document.getElementById('result');
+                    resultDiv.innerHTML = `<p>Train Name: ${liveStatusResult.details.name}</p>
+                                           <p>Source: ${liveStatusResult.details.source_name}</p>
+                                           <p>Destination: ${liveStatusResult.details.destination}</p>
+                                           <p>Train Type: ${liveStatusResult.details.type_description}</p>
+                                           <p>Days Running: ${liveStatusResult.details.days}</p>
+                                           <p>Current Station: ${liveStatusResult.train.source_name}</p>
+                                           <p>Current Station Arrival Time: ${liveStatusResult.train.arrival}</p>
+                                           <h2>Stations:</h2>`;
+
+                    // Display station details
+                    const stations = liveStatusResult.stations;
+                    stations.forEach(station => {
+                        resultDiv.innerHTML += `<p>${station.source_name} - Arrival: ${station.arrival}, Departure: ${station.departure}</p>`;
+                    });
+                } else {
+                    console.error('No train details found for the provided train number.');
+                }
+            } catch (error) {
+                console.error(error);
+            }
+        }
+
+        function getFormattedDate() {
+            const currentDate = new Date();
+            const options = { weekday: 'short', month: 'short', day: 'numeric' };
+            return currentDate.toLocaleDateString('en-US', options);
+        }
+    </script>
+</body>
+</html>
